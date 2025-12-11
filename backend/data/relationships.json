@@ -1,0 +1,37 @@
+[
+  {
+    "table_source": "IA_Lien_Operation_TG",
+    "column_source": "OPT_TG",
+    "table_target": "IA_Depenses",
+    "column_target": "DEP_TG_NUMERO",
+    "description": ""
+  },
+  {
+    "table_source": "IA_Operations",
+    "column_source": "OPE_OPERATION",
+    "table_target": "IA_Lien_Operation_TG",
+    "column_target": "OPT_OPERATION",
+    "description": ""
+  },
+  {
+    "table_source": "IA_Lien_Operation_TG",
+    "column_source": "OPT_TG",
+    "table_target": "IA_Commandes",
+    "column_target": "CDE_TG",
+    "description": ""
+  },
+  {
+    "table_source": "IA_Commandes",
+    "column_source": "CDE_ID_LIGNE_IMPUTATION",
+    "table_target": "IA_Factures",
+    "column_target": "FACF_D_COMF_IMPUTATION_ID",
+    "description": ""
+  },
+  {
+    "table_source": "IA_Factures",
+    "column_source": "FACF_D_ID",
+    "table_target": "IA_Reglements",
+    "column_target": "REG_ID_FACTURE",
+    "description": ""
+  }
+]
