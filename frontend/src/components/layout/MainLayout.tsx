@@ -18,6 +18,7 @@ interface MainLayoutProps {
     onDeleteTable?: (name: string, e: any) => void
     // Upload
     onFileUpload?: (e: any) => void
+    onRefreshTables?: () => void
 }
 
 export function MainLayout({ children, ...sidebarProps }: MainLayoutProps) {

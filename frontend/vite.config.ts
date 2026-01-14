@@ -10,4 +10,17 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Split large dependencies into separate chunks
+          'plotly': ['plotly.js', 'react-plotly.js'],
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+        }
+      }
+    },
+    // Increase warning limit for heavy visualization libraries
+    chunkSizeWarningLimit: 800,
+  }
 })

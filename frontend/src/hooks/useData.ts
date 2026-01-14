@@ -1,15 +1,28 @@
-import { useState, useEffect } from 'react';
+/**
+ * useData Hook
+ * Manages data-related state with memoized callbacks
+ */
+import { useState, useEffect, useCallback } from 'react';
 import { api } from '../services/api';
+import type { Relationship, TableData } from '../types';
+
+interface NewRelationship {
+    table_source: string;
+    column_source: string;
+    table_target: string;
+    column_target: string;
+}
 
 export function useData() {
+    // Table state
     const [tables, setTables] = useState<string[]>([]);
     const [selectedTable, setSelectedTable] = useState<string | null>(null);
-    const [tableContent, setTableContent] = useState<{ columns: string[], data: any[] } | null>(null);
+    const [tableContent, setTableContent] = useState<TableData | null>(null);
 
-    // Relationships State
-    const [relationships, setRelationships] = useState<any[]>([]);
-    const [mermaidChart, setMermaidChart] = useState<string>('');
-    const [newRelationship, setNewRelationship] = useState({
+    // Relationships state
+    const [relationships, setRelationships] = useState<Relationship[]>([]);
+    const [graphvizChart, setGraphvizChart] = useState<string>('');
+    const [newRelationship, setNewRelationship] = useState<NewRelationship>({
         table_source: '',
         column_source: '',
         table_target: '',
@@ -18,16 +31,18 @@ export function useData() {
     const [columnsSource, setColumnsSource] = useState<string[]>([]);
     const [columnsTarget, setColumnsTarget] = useState<string[]>([]);
 
-    const fetchTables = async () => {
+    // Memoized table fetching
+    const fetchTables = useCallback(async () => {
         try {
             const data = await api.getTables();
             setTables(data.tables);
         } catch (error) {
             console.error("Error fetching tables:", error);
         }
-    };
+    }, []);
 
-    const fetchTableContent = async (tableName: string) => {
+    // Memoized table content fetching
+    const fetchTableContent = useCallback(async (tableName: string) => {
         try {
             const data = await api.getTableContent(tableName);
             setTableContent(data);
@@ -35,9 +50,10 @@ export function useData() {
         } catch (error) {
             console.error("Error fetching table content:", error);
         }
-    };
+    }, []);
 
-    const deleteTable = async (tableName: string) => {
+    // Memoized table deletion
+    const deleteTable = useCallback(async (tableName: string) => {
         if (!confirm(`Voulez-vous vraiment supprimer la table "${tableName}" ?`)) return;
         try {
             await api.deleteTable(tableName);
@@ -49,38 +65,43 @@ export function useData() {
         } catch (error) {
             console.error("Error deleting table:", error);
         }
-    };
+    }, [selectedTable]);
 
-    // Relationship Logic
-    const fetchRelationships = async () => {
+    // Memoized relationship fetching
+    const fetchRelationships = useCallback(async () => {
         try {
-            console.log("Fetching relationships...");
             const rels = await api.getRelationships();
             setRelationships(rels);
-            const func = await api.getMermaidDiagram();
-            setMermaidChart(func.mermaid);
+            const diagram = await api.getGraphvizDiagram();
+            setGraphvizChart(diagram.graphviz);
         } catch (error) {
             console.error("Error fetching relationships:", error);
         }
-    };
+    }, []);
 
+    // Initial data fetch
     useEffect(() => {
         fetchTables();
         fetchRelationships();
-    }, []);
+    }, [fetchTables, fetchRelationships]);
 
-    const fetchColumns = async (tableName: string, type: 'source' | 'target') => {
+    // Memoized column fetching
+    const fetchColumns = useCallback(async (tableName: string, type: 'source' | 'target') => {
         if (!tableName) return;
         try {
             const data = await api.getTableColumns(tableName);
-            if (type === 'source') setColumnsSource(data.columns);
-            else setColumnsTarget(data.columns);
+            if (type === 'source') {
+                setColumnsSource(data.columns);
+            } else {
+                setColumnsTarget(data.columns);
+            }
         } catch (error) {
             console.error("Error fetching columns:", error);
         }
-    };
+    }, []);
 
-    const handleTableChange = (value: string, type: 'source' | 'target') => {
+    // Memoized table change handler
+    const handleTableChange = useCallback((value: string, type: 'source' | 'target') => {
         if (type === 'source') {
             setNewRelationship(prev => ({ ...prev, table_source: value, column_source: '' }));
             fetchColumns(value, 'source');
@@ -88,47 +109,64 @@ export function useData() {
             setNewRelationship(prev => ({ ...prev, table_target: value, column_target: '' }));
             fetchColumns(value, 'target');
         }
-    };
+    }, [fetchColumns]);
 
-    const addRelationship = async () => {
+    // Memoized relationship addition
+    const addRelationship = useCallback(async () => {
         if (!newRelationship.table_source || !newRelationship.column_source ||
-            !newRelationship.table_target || !newRelationship.column_target) return;
+            !newRelationship.table_target || !newRelationship.column_target) {
+            return;
+        }
 
         try {
             await api.addRelationship(newRelationship);
             await fetchRelationships();
-            setNewRelationship({ table_source: '', column_source: '', table_target: '', column_target: '' });
+            setNewRelationship({
+                table_source: '',
+                column_source: '',
+                table_target: '',
+                column_target: ''
+            });
             setColumnsSource([]);
             setColumnsTarget([]);
         } catch (error) {
             console.error("Error adding relationship:", error);
         }
-    };
+    }, [newRelationship, fetchRelationships]);
 
-    const resetRelationships = async () => {
+    // Memoized relationship reset
+    const resetRelationships = useCallback(async () => {
         if (!confirm("Voulez-vous vraiment supprimer TOUTES les relations ?")) return;
         try {
             await api.resetRelationships();
-            fetchRelationships();
-        } catch (e) { console.error(e) }
-    };
+            await fetchRelationships();
+        } catch (error) {
+            console.error("Error resetting relationships:", error);
+        }
+    }, [fetchRelationships]);
 
-    const deleteRelationship = async (rel: any) => {
+    // Memoized single relationship deletion
+    const deleteRelationship = useCallback(async (rel: Relationship) => {
         try {
             await api.deleteRelationship(rel);
-            fetchRelationships();
-        } catch (e) { console.error(e) }
-    }
+            await fetchRelationships();
+        } catch (error) {
+            console.error("Error deleting relationship:", error);
+        }
+    }, [fetchRelationships]);
 
     return {
+        // Table data
         tables,
         selectedTable,
         tableContent,
         fetchTables,
         fetchTableContent,
         deleteTable,
+
+        // Relationship data
         relationships,
-        mermaidChart,
+        graphvizChart,
         newRelationship,
         setNewRelationship,
         columnsSource,

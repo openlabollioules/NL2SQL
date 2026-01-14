@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Sun, Moon, Trash2, Plus, Upload } from "lucide-react"
+import { Sun, Moon, Trash2, Plus, Upload, RefreshCw } from "lucide-react"
 import { useNavigate, useLocation } from "react-router-dom"
 import { useRef } from "react"
 import { api } from "@/services/api"
@@ -21,6 +21,7 @@ interface SidebarProps {
     onDeleteTable?: (name: string, e: any) => void
     // Upload
     onFileUpload?: (e: any) => void
+    onRefreshTables?: () => void
 }
 
 export function Sidebar({
@@ -35,7 +36,8 @@ export function Sidebar({
     selectedTable,
     onSelectTable,
     onDeleteTable,
-    onFileUpload
+    onFileUpload,
+    onRefreshTables
 }: SidebarProps) {
     const navigate = useNavigate()
     const location = useLocation()
@@ -161,7 +163,18 @@ export function Sidebar({
                 {/* Tables List */}
                 {(activeTab === 'tables' || activeTab === 'modeling') && tables && (
                     <div className="flex-1">
-                        <h2 className="text-sm font-semibold mb-2 text-muted-foreground">Tables disponibles</h2>
+                        <div className="flex items-center justify-between mb-2">
+                            <h2 className="text-sm font-semibold text-muted-foreground">Tables disponibles</h2>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                                onClick={onRefreshTables}
+                                title="Actualiser les tables"
+                            >
+                                <RefreshCw className="h-4 w-4" />
+                            </Button>
+                        </div>
                         <ScrollArea className="h-[calc(100vh-200px)]">
                             {tables.map(table => (
                                 <div key={table} className="flex items-center gap-1 mb-1">

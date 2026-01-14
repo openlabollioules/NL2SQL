@@ -53,6 +53,98 @@ def get_schema_mermaid():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@router.get("/relationships/graphviz")
+def get_schema_graphviz():
+    """Generate a DOT (Graphviz) diagram of the database schema."""
+    import re
+    try:
+        tables = get_duckdb_service().get_tables()
+        relationships = relationship_service.get_relationships()
+        
+        # Start DOT graph with ER-style settings
+        dot = '''digraph ERDiagram {
+    graph [
+        rankdir=LR
+        splines=ortho
+        nodesep=0.8
+        ranksep=1.2
+        bgcolor="#ffffff"
+        fontname="Helvetica"
+    ]
+    node [
+        shape=none
+        fontname="Helvetica"
+        fontsize=11
+    ]
+    edge [
+        fontname="Helvetica"
+        fontsize=9
+        color="#6b7280"
+        arrowhead=crow
+        arrowtail=none
+    ]
+    
+'''
+        
+        # Color palette for tables
+        colors = [
+            ("#3b82f6", "#dbeafe"),  # Blue
+            ("#10b981", "#d1fae5"),  # Green
+            ("#f59e0b", "#fef3c7"),  # Amber
+            ("#8b5cf6", "#ede9fe"),  # Purple
+            ("#ec4899", "#fce7f3"),  # Pink
+            ("#06b6d4", "#cffafe"),  # Cyan
+            ("#f97316", "#ffedd5"),  # Orange
+        ]
+        
+        def sanitize_name(name):
+            """Sanitize name for DOT format."""
+            return re.sub(r'[^a-zA-Z0-9_]', '_', name)
+        
+        def escape_html(text):
+            """Escape HTML special chars."""
+            return str(text).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        
+        # Generate table nodes as HTML-like records
+        for idx, table in enumerate(tables):
+            original_name = table[0]
+            safe_name = sanitize_name(original_name)
+            header_color, row_color = colors[idx % len(colors)]
+            
+            schema = get_duckdb_service().get_schema(original_name)
+            
+            # Build HTML-like label for the table
+            label = f'''<
+        <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+            <TR><TD BGCOLOR="{header_color}" COLSPAN="2"><FONT COLOR="white"><B>{escape_html(original_name)}</B></FONT></TD></TR>
+'''
+            for col in schema:
+                col_name = col[0]
+                col_type = col[1]
+                safe_col = escape_html(col_name)
+                safe_type = escape_html(col_type)
+                label += f'            <TR><TD BGCOLOR="{row_color}" ALIGN="LEFT" PORT="{sanitize_name(col_name)}">{safe_col}</TD><TD BGCOLOR="#f9fafb" ALIGN="LEFT"><FONT COLOR="#6b7280">{safe_type}</FONT></TD></TR>\n'
+            
+            label += '        </TABLE>>'
+            
+            dot += f'    {safe_name} [label={label}]\n\n'
+        
+        # Add relationships as edges
+        for rel in relationships:
+            source_table = sanitize_name(rel['table_source'])
+            source_col = sanitize_name(rel['column_source'])
+            target_table = sanitize_name(rel['table_target'])
+            target_col = sanitize_name(rel['column_target'])
+            
+            dot += f'    {source_table}:{source_col} -> {target_table}:{target_col} [xlabel="" constraint=true]\n'
+        
+        dot += '}\n'
+        
+        return {"graphviz": dot}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.get("/relationships")
 def get_relationships():
     return relationship_service.get_relationships()

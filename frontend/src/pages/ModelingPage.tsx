@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "@/components/ui/dialog"
 import { Network, RefreshCw, Trash2, Download, Upload, Maximize2, Loader2 } from "lucide-react"
-import { MermaidDiagram } from "../components/MermaidDiagram"
+import { GraphvizDiagram } from "../components/GraphvizDiagram"
 import { useRef } from "react"
 import { api } from "@/services/api"
 
@@ -10,7 +10,7 @@ interface ModelingPageProps {
     tables: string[]
     fetchTables: () => void
     relationships: any[]
-    mermaidChart: string
+    graphvizChart: string
     newRelationship: any
     setNewRelationship: (val: any) => void
     columnsSource: string[]
@@ -25,7 +25,7 @@ export function ModelingPage({
     tables,
     fetchTables,
     relationships,
-    mermaidChart,
+    graphvizChart,
     newRelationship,
     setNewRelationship,
     columnsSource,
@@ -223,15 +223,15 @@ export function ModelingPage({
                                     <DialogTitle className="font-semibold text-lg">Diagramme BDD - Plein écran</DialogTitle>
                                 </div>
                                 <div className="flex-1 overflow-auto p-4 bg-white">
-                                    {mermaidChart && <MermaidDiagram chart={mermaidChart} />}
+                                    {graphvizChart && <GraphvizDiagram dot={graphvizChart} />}
                                 </div>
                             </DialogContent>
                         </Dialog>
                     </div>
                 </div>
                 <div className="flex-1 overflow-auto bg-white rounded border p-4">
-                    {mermaidChart ? (
-                        <MermaidDiagram chart={mermaidChart} />
+                    {graphvizChart ? (
+                        <GraphvizDiagram dot={graphvizChart} />
                     ) : (
                         <div className="h-full flex items-center justify-center text-muted-foreground flex-col gap-2">
                             <Loader2 className="h-8 w-8 animate-spin text-primary/50" />
