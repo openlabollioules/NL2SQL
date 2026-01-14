@@ -9,7 +9,7 @@ import time
 from pathlib import Path
 from functools import lru_cache
 from typing import Optional, Dict, Any
-from threading import Lock
+from threading import RLock
 
 import duckdb
 
@@ -44,7 +44,10 @@ class DuckDBService:
         # Schema cache
         self._schema_cache: Dict[str, Any] = {}
         self._schema_cache_time: float = 0
-        self._cache_lock = Lock()
+        self._cache_lock = RLock()
+        
+        # Connection lock for thread-safe access to DuckDB (RLock allows reentrant calls)
+        self._conn_lock = RLock()
         
         # Auto-load existing CSVs if tables are missing
         self._restore_tables_from_uploads()
@@ -119,9 +122,10 @@ class DuckDBService:
             if query_upper.startswith('SELECT') and 'LIMIT' not in query_upper:
                 query = f"SELECT * FROM ({query}) AS subq LIMIT {limit}"
             
-            relation = self.conn.sql(query)
-            columns = relation.columns
-            result = relation.fetchall()
+            with self._conn_lock:
+                relation = self.conn.sql(query)
+                columns = relation.columns
+                result = relation.fetchall()
             
             # Convert to list of dicts
             data = []
@@ -149,7 +153,8 @@ class DuckDBService:
         """
         try:
             # Use EXPLAIN to validate syntax
-            self.conn.sql(f"EXPLAIN {query}")
+            with self._conn_lock:
+                self.conn.sql(f"EXPLAIN {query}")
             return True, ""
         except Exception as e:
             return False, str(e)
@@ -160,7 +165,8 @@ class DuckDBService:
         try:
             # Use identifier quoting for safety
             query = f'CREATE OR REPLACE TABLE "{table_name}" AS SELECT * FROM read_csv_auto(\'{file_path}\')'
-            self.conn.execute(query)
+            with self._conn_lock:
+                self.conn.execute(query)
             # Invalidate schema cache
             self._invalidate_schema_cache()
             logger.info(f"Successfully loaded {file_path} into table {table_name}")
@@ -182,12 +188,14 @@ class DuckDBService:
 
     def get_tables(self):
         """Return a list of tables in the database."""
-        return self.conn.execute("SHOW TABLES").fetchall()
+        with self._conn_lock:
+            return self.conn.execute("SHOW TABLES").fetchall()
 
     def get_schema(self, table_name: str):
         """Return the schema of a specific table."""
         self.validate_table_name(table_name)
-        return self.conn.execute(f'DESCRIBE "{table_name}"').fetchall()
+        with self._conn_lock:
+            return self.conn.execute(f'DESCRIBE "{table_name}"').fetchall()
 
     def get_all_schemas(self, use_cache: bool = True) -> str:
         """Return a formatted string of all table schemas with caching."""
@@ -229,25 +237,26 @@ class DuckDBService:
         """Return the content of a table with a limit."""
         self.validate_table_name(table_name)
         try:
-            schema = self.get_schema(table_name)
-            columns = [col[0] for col in schema]
-            
-            result = self.conn.execute(f'SELECT * FROM "{table_name}" LIMIT {int(limit)}').fetchall()
-            
-            data = []
-            for row in result:
-                row_dict = {}
-                for i, col in enumerate(columns):
-                    value = row[i]
-                    # Handle special types for JSON serialization
-                    if hasattr(value, 'isoformat'):
-                        value = value.isoformat()
-                    elif isinstance(value, (bytes, bytearray)):
-                        value = value.decode('utf-8', errors='replace')
-                    row_dict[col] = value
-                data.append(row_dict)
+            with self._conn_lock:
+                schema = self.get_schema(table_name)
+                columns = [col[0] for col in schema]
                 
-            return {"columns": columns, "data": data}
+                result = self.conn.execute(f'SELECT * FROM "{table_name}" LIMIT {int(limit)}').fetchall()
+                
+                data = []
+                for row in result:
+                    row_dict = {}
+                    for i, col in enumerate(columns):
+                        value = row[i]
+                        # Handle special types for JSON serialization
+                        if hasattr(value, 'isoformat'):
+                            value = value.isoformat()
+                        elif isinstance(value, (bytes, bytearray)):
+                            value = value.decode('utf-8', errors='replace')
+                        row_dict[col] = value
+                    data.append(row_dict)
+                    
+                return {"columns": columns, "data": data}
         except Exception as e:
             logger.exception(f"Error fetching table content: {e}")
             raise
@@ -256,7 +265,8 @@ class DuckDBService:
         """Delete a table from the database."""
         self.validate_table_name(table_name)
         try:
-            self.conn.execute(f'DROP TABLE IF EXISTS "{table_name}"')
+            with self._conn_lock:
+                self.conn.execute(f'DROP TABLE IF EXISTS "{table_name}"')
             logger.info(f"Successfully deleted table {table_name}")
             return f"Successfully deleted table {table_name}"
         except Exception as e:
@@ -266,8 +276,9 @@ class DuckDBService:
     def get_row_count(self, table_name: str) -> int:
         """Get the number of rows in a table."""
         self.validate_table_name(table_name)
-        result = self.conn.execute(f'SELECT COUNT(*) FROM "{table_name}"').fetchone()
-        return result[0] if result else 0
+        with self._conn_lock:
+            result = self.conn.execute(f'SELECT COUNT(*) FROM "{table_name}"').fetchone()
+            return result[0] if result else 0
 
 
 # Singleton pattern with explicit maxsize

@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { MessageSquare, Database, Send, Upload } from "lucide-react"
-import Plot from 'react-plotly.js'
+import { PlotlyChart } from "@/components/PlotlyChart"
 
 interface ChatPageProps {
     messages: any[]
@@ -141,23 +141,23 @@ export function ChatPage({
                             {/* Render Chart */}
                             {msg.type === 'chart' && msg.chartConfig && (
                                 <div className="mt-2 w-full max-w-[90%] border rounded-md overflow-hidden bg-white p-2">
-                                    <Plot
+                                    <PlotlyChart
                                         data={msg.chartConfig.data}
                                         layout={{
                                             ...msg.chartConfig.layout,
                                             autosize: true,
-                                            margin: { l: 50, r: 50, b: 150, t: 50, pad: 4 }, // Increased bottom margin
+                                            margin: { l: 50, r: 50, b: 150, t: 50, pad: 4 },
                                             xaxis: {
                                                 ...msg.chartConfig.layout?.xaxis,
                                                 automargin: true,
-                                                tickangle: -45 // Angle ticks for better readability
+                                                tickangle: -45
                                             },
                                             yaxis: {
                                                 ...msg.chartConfig.layout?.yaxis,
                                                 automargin: true
                                             }
                                         }}
-                                        style={{ width: "100%", height: "500px" }} // Increased height for better visibility
+                                        style={{ width: "100%", height: "500px" }}
                                         useResizeHandler={true}
                                     />
                                 </div>

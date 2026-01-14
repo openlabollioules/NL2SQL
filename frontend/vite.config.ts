@@ -15,7 +15,7 @@ export default defineConfig({
       output: {
         manualChunks: {
           // Split large dependencies into separate chunks
-          'plotly': ['plotly.js', 'react-plotly.js'],
+          'plotly': ['plotly.js-basic-dist-min'],
           'react-vendor': ['react', 'react-dom', 'react-router-dom'],
         }
       }

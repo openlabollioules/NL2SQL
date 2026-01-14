@@ -113,8 +113,8 @@ export interface TableColumnsResponse {
     columns: string[];
 }
 
-export interface MermaidDiagramResponse {
-    mermaid: string;
+export interface GraphvizDiagramResponse {
+    graphviz: string;
 }
 
 // ==================== Component Props Types ====================
@@ -154,7 +154,7 @@ export interface ModelingPageProps {
     tables: string[];
     fetchTables: () => Promise<void>;
     relationships: Relationship[];
-    mermaidChart: string;
+    graphvizChart: string;
     newRelationship: Relationship;
     setNewRelationship: (rel: Relationship) => void;
     columnsSource: string[];
